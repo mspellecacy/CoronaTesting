@@ -1,3 +1,5 @@
+-- Simple "bursting" star effect
+
 local storyboard = require( "storyboard" )
 local scene = storyboard.newScene()
 
