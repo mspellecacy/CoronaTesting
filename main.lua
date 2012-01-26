@@ -9,4 +9,5 @@ display.setStatusBar( display.HiddenStatusBar );
 local storyboard = require( "storyboard" );
 
 -- load first screen
-storyboard.gotoScene( "titleScene" );
+storyboard.gotoScene( "spawnScene" );
+--storyboard.gotoScene( "titleScene" );
