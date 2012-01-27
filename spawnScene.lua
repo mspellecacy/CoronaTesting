@@ -2,9 +2,10 @@
 local storyboard = require( "storyboard" )
 local scene = storyboard.newScene()
 local physics = require "physics"
---physics.setDrawMode( "hybrid" );
+--physicssetGravity(0,100);
+physics.setDrawMode( "hybrid" );
 physics.start();
-
+physics.setGravity(0,15);
 
 local cX = display.viewableContentWidth;
 local cY = display.viewableContentHeight;
@@ -13,11 +14,12 @@ local cCY = cY / 2;
 local rand = math.random;
 
 --> Scene Vars
-local minDist = 35;
+local minDist = 55;
 local pegRadius = 15;
 local pegs = {};
 local ballRadius = 15;
 local balls = {};
+local shapes = {};
 
 --> Setup some walls
 local leftWall  = display.newRect (0, 0, 1, display.contentHeight)
@@ -35,7 +37,8 @@ print("cX: "..cX.."; cY: "..cY);
 
 local function spawnBall(loc)
    if loc.phase == "began" then
-      physProps = { density=3.0, friction=0.8, bounce=0.7, radius = ballRadius }
+      --print("x="..loc.x.."; y="..loc.y..";");
+      physProps = { density=3.0, friction=0.2, bounce=0.8, radius = ballRadius }
       balls[#balls+1] = display.newCircle(loc.x, loc.y, ballRadius);
       balls[#balls]:setFillColor(128, 0, 0);
       balls[#balls].ballName = #balls;
@@ -53,14 +56,15 @@ end
 
 --> Checks to see if the point overlaps any pegs. 
 local function overlap(loc)
+
    for i=1,#pegs do
-      if distance(pegs[i].x, pegs[i].y, loc.x, loc.y) <= 35 then
+      if distance(pegs[i].x, pegs[i].y, loc.x, loc.y) <= minDist then
+	 
 	 return true;
       end
    end
    return false;
 end
-
 
 local function pegCollision(self, event)
    if event.phase == "ended" then
@@ -83,9 +87,59 @@ local function floorCollision(self, event)
    timer.performWithDelay(200, removeBall);
 end
 
+--> Pre-created levels...
+local function buildField2()
+   local physicsData = (require "lvl1").physicsData(1)
+   --pProp = { density = 2, friction = 0, bounce = .5 };
+   local background = display.newRect(0,0,cX,cY);
+   background:setFillColor(0,0,0);
+   --local background = display.newImage("lvl1.png")
+   --background.addBody( shape,"static", physicsData:get("lvl1") )
+
+   local thisLevelShapes = physicsData['data']["lvl1"];
+   for i=1,#thisLevelShapes do
+      local thisShape = thisLevelShapes[i].shape
+      pegs[#pegs+1] = display.newLine(thisShape[1],thisShape[2],
+					  thisShape[3],thisShape[4]);
+      pegs[#pegs]:append(thisShape[5],thisShape[6], 
+			     thisShape[7], thisShape[8],
+			     thisShape[1],thisShape[2]);
+      pegs[#pegs]:setColor(255,0,0);
+      pegs[#pegs].width = 4;
+      print(pegs[#pegs].x);
+      print(pegs[#pegs].y);
+      pegs[#pegs].x = pegs[#pegs].x + cCX;
+      pegs[#pegs].y = pegs[#pegs].y + cCY;
+      
+      
+      physics.addBody( pegs[#pegs] ,"static", { density = 2, friction = 0,
+						bounce = .5, 
+						shape=thisShape} );
+      pegs[#pegs].collision = pegCollision;
+      pegs[#pegs]:addEventListener("collision",pegs[#pegs]);
+      --
+      print("---- NEW SHAPE ----");
+   end
+
+   local pegData = (require "pegData"):getPegs();
+   
+   for i=1,#pegData do
+      pegs[#pegs+1] = display.newImageRect("peg.png",45,45);
+      pegs[#pegs].x = pegData[i].x;
+      pegs[#pegs].y = pegData[i].y;
+      
+      physics.addBody(pegs[#pegs], "static", physicsData:get("peg"));
+      pegs[#pegs].collision = pegCollision;
+      pegs[#pegs].pegName = #pegs;
+      pegs[#pegs]:addEventListener("collision",pegs[#pegs]);
+   end
+   
+   --physics.addBody(background,"static", physicsData:get("lvl1"));
+end
+
 --> Dynamically generate a field of circles or "pegs" for the playfield.
 local function buildField()
-   physProps = { density=3.0, friction=0.8, bounce=0.3, radius = pegRadius }
+   physProps = { density=3.0, friction=0.8, bounce=0.3, radius = pegRadius-3 }
    y=rand(100, 150);
    while y < cY do
       x = rand(15, 20)
@@ -99,12 +153,14 @@ local function buildField()
 	       oCheck = overlap({x=nX,y=nY});
 	       wobble = wobble + 5;
 	    end
-	    pegs[#pegs+1] = display.newCircle(nX, nY, pegRadius);
+	    pegs[#pegs+1] = display.newImageRect("peg.png",45,45);
+	    pegs[#pegs].x, pegs[#pegs].y = nX, nY;
+	    --pegs[#pegs+1] = display.newCircle(nX, nY, pegRadius);
 	    if rand(1,3) == 1 then
-	       pegs[#pegs]:setFillColor(0,128,0);
+	       pegs[#pegs]:setFillColor(255,255,0);
 	       pegs[#pegs].scorePeg = true;
 	    else
-	       pegs[#pegs]:setFillColor(128, 128, 128);
+	       --pegs[#pegs]:setFillColor(128, 128, 128);
 	       pegs[#pegs].scorePeg = false;
 	    end
 	    physics.addBody(pegs[#pegs], "static", physProps);
@@ -122,7 +178,8 @@ end
 
 function scene:createScene( event )
    local group = self.view
-   buildField();
+   --buildField();
+   buildField2();
 end
 
 function scene:enterScene( event )
